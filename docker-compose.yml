@@ -146,5 +146,17 @@ services:
     ports:
       - "8083:8083"
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: petstore-frontend
+    depends_on:
+      - pet-gateway
+      - user-gateway
+      - order-gateway
+    ports:
+      - "3000:80"
+
 volumes:
   postgres_data:
