@@ -1,0 +1,59 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+
+	"github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/order-service/internal/config"
+	grpcdelivery "github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/order-service/internal/delivery/grpc"
+	postgresrepo "github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/order-service/internal/repository/postgres"
+	"github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/order-service/internal/usecase"
+	"github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/proto/gen/orderpb"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/nats.go"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	cfg := config.Load()
+	ctx := context.Background()
+
+	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(ctx); err != nil {
+		log.Fatalf("failed to ping postgres: %v", err)
+	}
+
+	natsConn, err := nats.Connect(cfg.NATSURL)
+	if err != nil {
+		log.Printf("warning: failed to connect to nats: %v", err)
+		natsConn = nil
+	}
+	if natsConn != nil {
+		defer natsConn.Close()
+	}
+
+	orderRepo := postgresrepo.NewOrderRepository(db)
+	orderUsecase := usecase.NewOrderUsecase(orderRepo, natsConn)
+	orderHandler := grpcdelivery.NewOrderHandler(orderUsecase)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	server := grpc.NewServer()
+	orderpb.RegisterOrderServiceServer(server, orderHandler)
+
+	log.Printf("Order Service gRPC server started on port %s", cfg.GRPCPort)
+
+	if err := server.Serve(listener); err != nil {
+		log.Fatalf("failed to serve grpc server: %v", err)
+	}
+}

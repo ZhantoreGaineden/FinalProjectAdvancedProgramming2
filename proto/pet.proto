@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package pet;
+
+option go_package = "github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/proto/gen/petpb";
+
+service PetService {
+  rpc CreatePet(CreatePetRequest) returns (PetResponse);
+  rpc GetPet(GetPetRequest) returns (PetResponse);
+  rpc ListPets(ListPetsRequest) returns (ListPetsResponse);
+  rpc UpdatePet(UpdatePetRequest) returns (PetResponse);
+  rpc DeletePet(DeletePetRequest) returns (DeletePetResponse);
+}
+
+message Pet {
+  string id = 1;
+  string name = 2;
+  string category = 3;
+  string breed = 4;
+  int32 age = 5;
+  double price = 6;
+  string status = 7;
+  string created_at = 8;
+}
+
+message CreatePetRequest {
+  string name = 1;
+  string category = 2;
+  string breed = 3;
+  int32 age = 4;
+  double price = 5;
+  string status = 6;
+}
+
+message GetPetRequest {
+  string id = 1;
+}
+
+message ListPetsRequest {
+  string category = 1;
+  string status = 2;
+}
+
+message ListPetsResponse {
+  repeated Pet pets = 1;
+}
+
+message UpdatePetRequest {
+  string id = 1;
+  string name = 2;
+  string category = 3;
+  string breed = 4;
+  int32 age = 5;
+  double price = 6;
+  string status = 7;
+}
+
+message DeletePetRequest {
+  string id = 1;
+}
+
+message DeletePetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message PetResponse {
+  Pet pet = 1;
+}

@@ -1,0 +1,6 @@
+.git
+.github
+.vscode
+frontend/node_modules
+**/tmp
+**/*.log

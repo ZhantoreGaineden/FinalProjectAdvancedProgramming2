@@ -1,0 +1,12 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS pets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    breed VARCHAR(100),
+    age INT NOT NULL DEFAULT 0,
+    price NUMERIC(10,2) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'available',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

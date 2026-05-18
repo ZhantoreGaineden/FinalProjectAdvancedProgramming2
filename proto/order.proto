@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "github.com/ZhantoreGaineden/FinalProjectAdvancedProgramming2/proto/gen/orderpb";
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (OrderResponse);
+  rpc ListUserOrders(ListUserOrdersRequest) returns (ListOrdersResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (OrderResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message Order {
+  string id = 1;
+  string user_id = 2;
+  double total_price = 3;
+  string status = 4;
+  string created_at = 5;
+  repeated OrderItem items = 6;
+}
+
+message OrderItem {
+  string id = 1;
+  string order_id = 2;
+  string pet_id = 3;
+  double price = 4;
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  string user_email = 2;
+  repeated CreateOrderItem items = 3;
+}
+
+message CreateOrderItem {
+  string pet_id = 1;
+  double price = 2;
+}
+
+message GetOrderRequest {
+  string id = 1;
+}
+
+message ListUserOrdersRequest {
+  string user_id = 1;
+}
+
+message ListOrdersResponse {
+  repeated Order orders = 1;
+}
+
+message UpdateOrderStatusRequest {
+  string id = 1;
+  string status = 2;
+  string user_email = 3;
+}
+
+message CancelOrderRequest {
+  string id = 1;
+}
+
+message CancelOrderResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message OrderResponse {
+  Order order = 1;
+}

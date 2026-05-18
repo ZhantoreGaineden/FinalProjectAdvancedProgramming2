@@ -1,0 +1,150 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: petstore-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: petstore
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d petstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrations-runner:
+    build:
+      context: .
+      dockerfile: migrations-runner/Dockerfile
+    container_name: petstore-migrations-runner
+    environment:
+      PET_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/pet_db?sslmode=disable"
+      USER_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/user_db?sslmode=disable"
+      ORDER_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/order_db?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: petstore-redis
+    ports:
+      - "6379:6379"
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: petstore-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  pet-service:
+    build:
+      context: .
+      dockerfile: pet-service/Dockerfile
+    container_name: petstore-pet-service
+    environment:
+      PET_SERVICE_GRPC_PORT: "50051"
+      PET_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/pet_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      migrations-runner:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    ports:
+      - "50051:50051"
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: petstore-user-service
+    environment:
+      USER_SERVICE_GRPC_PORT: "50052"
+      USER_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/user_db?sslmode=disable"
+      NATS_URL: "nats://nats:4222"
+    depends_on:
+      migrations-runner:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    ports:
+      - "50052:50052"
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: petstore-order-service
+    environment:
+      ORDER_SERVICE_GRPC_PORT: "50053"
+      ORDER_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/order_db?sslmode=disable"
+      NATS_URL: "nats://nats:4222"
+    depends_on:
+      migrations-runner:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    ports:
+      - "50053:50053"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: petstore-notification-service
+    restart: unless-stopped
+    environment:
+      NATS_URL: "nats://nats:4222"
+      FROM_EMAIL: "noreply@petstore.com"
+    depends_on:
+      nats:
+        condition: service_started
+
+  pet-gateway:
+    build:
+      context: .
+      dockerfile: pet-gateway/Dockerfile
+    container_name: petstore-pet-gateway
+    environment:
+      PET_GATEWAY_HTTP_PORT: "8081"
+      PET_SERVICE_ADDR: "pet-service:50051"
+    depends_on:
+      - pet-service
+    ports:
+      - "8081:8081"
+
+  user-gateway:
+    build:
+      context: .
+      dockerfile: user-gateway/Dockerfile
+    container_name: petstore-user-gateway
+    environment:
+      USER_GATEWAY_HTTP_PORT: "8082"
+      USER_SERVICE_ADDR: "user-service:50052"
+    depends_on:
+      - user-service
+    ports:
+      - "8082:8082"
+
+  order-gateway:
+    build:
+      context: .
+      dockerfile: order-gateway/Dockerfile
+    container_name: petstore-order-gateway
+    environment:
+      ORDER_GATEWAY_HTTP_PORT: "8083"
+      ORDER_SERVICE_ADDR: "order-service:50053"
+    depends_on:
+      - order-service
+    ports:
+      - "8083:8083"
+
+volumes:
+  postgres_data:
